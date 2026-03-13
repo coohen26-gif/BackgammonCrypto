@@ -103,11 +103,12 @@ export default function BackgammonDashboard() {
     return Array.from({ length: absCount }).map((_, i) => (
       <div 
         key={i} 
-        className={`w-8 h-8 rounded-full border-2 -mt-4 first:mt-0 relative transition-all duration-300 shadow-lg ${
+        className={`w-8 h-8 rounded-full border-2 -mt-4 first:mt-0 relative transition-all duration-300 shadow-lg checker-animate ${
           isWhite 
             ? "bg-gradient-to-br from-[#fefefe] to-[#e0e0e0] border-white/40 shadow-white/10" 
             : "bg-gradient-to-br from-[#333333] to-[#111111] border-black/40 shadow-black/40"
         } ${isSelected ? "ring-4 ring-[#c8102e] scale-110 z-30" : ""} ${canMove && !selectedPoint ? "cursor-pointer hover:shadow-[0_0_15px_rgba(200,16,46,0.4)]" : ""}`}
+        style={{ animationDelay: `${i * 0.05}s` }}
       >
         <div className="absolute inset-1.5 rounded-full border border-white/5 bg-gradient-to-tr from-white/5 to-transparent"></div>
       </div>
