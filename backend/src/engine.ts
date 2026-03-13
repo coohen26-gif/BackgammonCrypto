@@ -117,5 +117,32 @@ export class BackgammonEngine {
         return true;
     }
 
-    public getState(): GameState { return this.state; }
-}
+    public getPossibleMoves(): { from: number; to: number }[] {
+        const moves: { from: number; to: number }[] = [];
+        const player = this.state.turn;
+        
+        // Gérer le bar d'abord
+        if (player === 'W' && this.state.bar.W > 0) {
+            for (const die of this.state.dice) {
+                if (this.isValidMove(-1, die - 1)) moves.push({ from: -1, to: die - 1 });
+            }
+            return moves;
+        }
+        if (player === 'B' && this.state.bar.B > 0) {
+            for (const die of this.state.dice) {
+                if (this.isValidMove(-1, 24 - die)) moves.push({ from: -1, to: 24 - die });
+            }
+            return moves;
+        }
+
+        // Parcourir le board
+        for (let i = 0; i < 24; i++) {
+            if ((player === 'W' && this.state.board[i] > 0) || (player === 'B' && this.state.board[i] < 0)) {
+                for (const die of this.state.dice) {
+                    const to = player === 'W' ? i + die : i - die;
+                    if (this.isValidMove(i, to)) moves.push({ from: i, to });
+                }
+            }
+        }
+        return moves;
+    }
