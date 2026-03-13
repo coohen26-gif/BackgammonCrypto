@@ -103,27 +103,28 @@ export default function BackgammonDashboard() {
     ));
   };
 
-  const renderPoint = (index: number, isBottom: boolean) => {
-    const pointIndex = isBottom ? (index < 6 ? 11 - index : 5 - (index - 6)) : (index < 6 ? 12 + index : 18 + index);
+  const renderPoint = (pointIndex: number, isBottom: boolean) => {
     const checkers = board[pointIndex];
-    const isDarkPoint = index % 2 === (isBottom ? 0 : 1);
+    // Hector Saxe Edition: Points triangulaires fins et contrastés
+    const isDarkPoint = pointIndex % 2 !== 0; // Alternance
     const isTarget = selectedPoint !== null && possibleMoves.some(m => m.from === selectedPoint && m.to === pointIndex);
     
     return (
       <div 
-        key={index} 
+        key={pointIndex} 
         onClick={() => handlePointClick(pointIndex)}
-        className={`relative w-full flex flex-col items-center justify-${isBottom ? 'end' : 'start'} px-1 py-6 group cursor-pointer ${isTarget ? "bg-[#c8102e]/10" : ""}`}
+        className={`relative w-full h-full flex flex-col items-center justify-${isBottom ? 'end' : 'start'} px-1 py-4 group cursor-pointer ${isTarget ? "bg-[#c8102e]/10" : ""}`}
       >
+         {/* Triangle Hector Saxe (Pointe effilée) */}
          <div 
-            className={`w-0 h-0 border-l-[16px] border-l-transparent border-r-[16px] border-r-transparent transition-all duration-500 group-hover:brightness-125 ${
+            className={`w-0 h-0 border-l-[18px] border-l-transparent border-r-[18px] border-r-transparent transition-all duration-500 group-hover:brightness-125 ${
                 isBottom ? 'border-t-[220px] origin-top' : 'border-b-[220px] rotate-180 origin-bottom'
             } ${
-                isTarget ? 'border-t-[#c8102e]' : isDarkPoint ? 'border-t-[#c8102e]/60' : 'border-t-[#424242]/70'
+                isTarget ? 'border-t-[#c8102e]' : isDarkPoint ? 'border-t-[#c8102e]/70' : 'border-t-[#333]/70'
             }`}
          ></div>
          
-         <div className="z-10 flex flex-col items-center">
+         <div className={`z-10 flex flex-col items-center ${isBottom ? 'mb-2' : 'mt-2'}`}>
             {renderCheckers(checkers, pointIndex)}
          </div>
       </div>
@@ -189,14 +190,16 @@ export default function BackgammonDashboard() {
           <div className="bg-[#2c2c2c] p-4 rounded-sm shadow-[0_40px_80px_rgba(0,0,0,0.6)] border-[12px] border-[#1a1a1a] relative">
             <div className="grid grid-rows-2 h-[600px] bg-[#121212] shadow-inner relative border border-white/5">
               
+              {/* Moitié Supérieure (Points 12 à 23, de gauche à droite) */}
               <div className="grid grid-cols-12 border-b border-white/10 relative px-2">
-                 <div className="absolute left-1/2 top-0 bottom-0 w-10 bg-[#1a1a1a] -translate-x-1/2 z-20 shadow-2xl border-x border-white/5"></div>
-                 {Array.from({ length: 12 }).map((_, i) => renderPoint(i, false))}
+                 <div className="absolute left-1/2 top-0 bottom-0 w-12 bg-[#1a1a1a] -translate-x-1/2 z-20 shadow-2xl border-x border-white/5"></div>
+                 {Array.from({ length: 12 }).map((_, i) => renderPoint(12 + i, false))}
               </div>
 
+              {/* Moitié Inférieure (Points 11 à 0, de gauche à droite) */}
               <div className="grid grid-cols-12 relative px-2">
-                <div className="absolute left-1/2 top-0 bottom-0 w-10 bg-[#1a1a1a] -translate-x-1/2 z-20 shadow-2xl border-x border-white/5"></div>
-                {Array.from({ length: 12 }).map((_, i) => renderPoint(i, true))}
+                <div className="absolute left-1/2 top-0 bottom-0 w-12 bg-[#1a1a1a] -translate-x-1/2 z-20 shadow-2xl border-x border-white/5"></div>
+                {Array.from({ length: 12 }).map((_, i) => renderPoint(11 - i, true))}
               </div>
 
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-6">
