@@ -48,6 +48,17 @@ export default function BackgammonDashboard() {
     setLoading(false);
   };
 
+  const resetGame = async () => {
+    if (!confirm("Voulez-vous vraiment réinitialiser la partie ?")) return;
+    setLoading(true);
+    try {
+      await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/reset`, { method: "POST" });
+      setSelectedPoint(null);
+      fetchState();
+    } catch (e) {}
+    setLoading(false);
+  };
+
   useEffect(() => {
     fetchState();
     const interval = setInterval(fetchState, 3000);
@@ -234,6 +245,14 @@ export default function BackgammonDashboard() {
                  MOVE SELECTED: POINT {selectedPoint === -1 ? "BAR" : selectedPoint}
                </div>
              )}
+             <div className="flex gap-4">
+                <button 
+                  onClick={resetGame}
+                  className="px-6 py-2 bg-white/5 rounded-sm text-[9px] font-bold text-white/40 hover:text-white transition-colors border border-white/5 uppercase tracking-widest"
+                >
+                    Reset Table
+                </button>
+             </div>
           </div>
         </div>
       </main>
