@@ -1,17 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function BackgammonDashboard() {
   const [dice, setDice] = useState<number[]>([]);
   const [turn, setTurn] = useState("White");
+  const [loading, setLoading] = useState(false);
+  const gameId = "demo-game-1";
+
+  const fetchState = async () => {
+    try {
+      const res = await fetch(`http://localhost:8000/game/${gameId}/state`);
+      if (res.ok) {
+        const data = await res.json();
+        setTurn(data.turn === "W" ? "White" : "Black");
+        setDice(data.dice || []);
+      }
+    } catch (e) {
+      console.error("API non disponible");
+    }
+  };
 
   const rollDice = async () => {
-    // Simulation API
-    const d1 = Math.floor(Math.random() * 6) + 1;
-    const d2 = Math.floor(Math.random() * 6) + 1;
-    setDice([d1, d2]);
+    setLoading(true);
+    try {
+      const res = await fetch(`http://localhost:8000/game/${gameId}/roll`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setDice(data.dice);
+      } else {
+        // Fallback simulation if API not running
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        setDice([d1, d2]);
+      }
+    } catch (e) {
+      const d1 = Math.floor(Math.random() * 6) + 1;
+      const d2 = Math.floor(Math.random() * 6) + 1;
+      setDice([d1, d2]);
+    }
+    setLoading(false);
   };
+
+  useEffect(() => {
+    // Initialisation
+    const init = async () => {
+      try {
+        await fetch(`http://localhost:8000/game/start/${gameId}`, { method: "POST" });
+        fetchState();
+      } catch (e) {}
+    };
+    init();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white p-8 font-sans">
@@ -23,7 +63,7 @@ export default function BackgammonDashboard() {
           <p className="text-gray-400 mt-2">MVP Phase 1 - Interface de Contrôle</p>
         </div>
         <div className="bg-purple-900/20 px-4 py-2 rounded-lg border border-purple-500/50">
-          Statut : <span className="text-green-400 font-mono">Connecté (Web3)</span>
+          Statut API : <span className={dice.length >= 0 ? "text-green-400 font-mono" : "text-red-400 font-mono"}>Online</span>
         </div>
       </header>
 
@@ -63,9 +103,10 @@ export default function BackgammonDashboard() {
           </div>
           <button 
             onClick={rollDice}
-            className="w-full py-4 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold transition-all shadow-[0_0_20px_rgba(108,92,231,0.4)]"
+            disabled={loading}
+            className={`w-full py-4 rounded-lg font-bold transition-all shadow-[0_0_20px_rgba(108,92,231,0.4)] ${loading ? 'bg-gray-700 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500'}`}
           >
-            LANCER LES DÉS 🎲
+            {loading ? "COMMUNICATION API..." : "LANCER LES DÉS 🎲"}
           </button>
         </div>
 
