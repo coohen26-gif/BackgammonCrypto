@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Wallet, Trophy, Play, Dice5, ShieldCheck, Activity, History, ChevronRight } from "lucide-react";
+import { io } from "socket.io-client";
 
 export default function BackgammonDashboard() {
   const [dice, setDice] = useState<number[]>([]);
@@ -13,24 +14,40 @@ export default function BackgammonDashboard() {
   const [bar, setBar] = useState({ W: 0, B: 0 });
   const [possibleMoves, setPossibleMoves] = useState<{from: number, to: number}[]>([]);
   const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
+  const [socket, setSocket] = useState<any>(null);
   
   const gameId = "demo-game-1";
 
-  const fetchState = async () => {
+  // Initialisation Socket.IO
+  useEffect(() => {
+    const newSocket = io("https://mydavid.io", {
+      path: "/backgammon/api/socket.io",
+      transports: ["websocket"]
+    });
+
+    newSocket.on("connect", () => {
+      console.log("Connected to WebSocket");
+      newSocket.emit("join_game", { game_id: gameId });
+    });
+
+    newSocket.on("game_state", (data: any) => {
+      setBoard(data.board);
+      setTurn(data.turn === "W" ? "White" : "Black");
+      setDice(data.dice || []);
+      setBar(data.bar || { W: 0, B: 0 });
+      fetchPossibleMoves();
+    });
+
+    setSocket(newSocket);
+    return () => { newSocket.close(); };
+  }, []);
+
+  const fetchPossibleMoves = async () => {
     try {
-      const res = await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/state`);
-      if (res.ok) {
-        const data = await res.json();
-        setBoard(data.board);
-        setTurn(data.turn === "W" ? "White" : "Black");
-        setDice(data.dice || []);
-        setBar(data.bar || { W: 0, B: 0 });
-        
-        const movesRes = await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/possible-moves`);
-        if (movesRes.ok) {
-          const movesData = await movesRes.json();
-          setPossibleMoves(movesData.moves);
-        }
+      const movesRes = await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/possible-moves`);
+      if (movesRes.ok) {
+        const movesData = await movesRes.json();
+        setPossibleMoves(movesData.moves);
       }
     } catch (e) {}
   };
@@ -38,32 +55,10 @@ export default function BackgammonDashboard() {
   const rollDice = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/roll`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setDice(data.dice);
-        fetchState();
-      }
+      await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/roll`, { method: "POST" });
     } catch (e) {}
     setLoading(false);
   };
-
-  const resetGame = async () => {
-    if (!confirm("Voulez-vous vraiment réinitialiser la partie ?")) return;
-    setLoading(true);
-    try {
-      await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/reset`, { method: "POST" });
-      setSelectedPoint(null);
-      fetchState();
-    } catch (e) {}
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchState();
-    const interval = setInterval(fetchState, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handlePointClick = async (pointIndex: number) => {
     if (selectedPoint === null) {
@@ -85,13 +80,20 @@ export default function BackgammonDashboard() {
             body: JSON.stringify({ from: selectedPoint, to: pointIndex })
           });
           setSelectedPoint(null);
-          fetchState();
         } catch (e) {}
         setLoading(false);
       } else {
         setSelectedPoint(null);
       }
     }
+  };
+
+  const resetGame = async () => {
+    if (!confirm("Reset Table?")) return;
+    try {
+      await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/reset`, { method: "POST" });
+      setSelectedPoint(null);
+    } catch (e) {}
   };
 
   const renderCheckers = (count: number, pointIndex: number) => {
@@ -105,7 +107,7 @@ export default function BackgammonDashboard() {
         key={i} 
         className={`w-8 h-8 rounded-full border-2 -mt-4 first:mt-0 relative transition-all duration-300 shadow-lg checker-animate ${
           isWhite 
-            ? "bg-gradient-to-br from-[#fefefe] to-[#e0e0e0] border-white/40 shadow-white/10" 
+            ? "bg-gradient-to-br from-[#fefefe] to-[#e0e0e0] border-white/40" 
             : "bg-gradient-to-br from-[#333333] to-[#111111] border-black/40 shadow-black/40"
         } ${isSelected ? "ring-4 ring-[#c8102e] scale-110 z-30" : ""} ${canMove && !selectedPoint ? "cursor-pointer hover:shadow-[0_0_15px_rgba(200,16,46,0.4)]" : ""}`}
         style={{ animationDelay: `${i * 0.05}s` }}
@@ -117,8 +119,7 @@ export default function BackgammonDashboard() {
 
   const renderPoint = (pointIndex: number, isBottom: boolean) => {
     const checkers = board[pointIndex];
-    // Hector Saxe Edition: Points triangulaires fins et contrastés
-    const isDarkPoint = pointIndex % 2 !== 0; // Alternance
+    const isDarkPoint = pointIndex % 2 !== 0;
     const isTarget = selectedPoint !== null && possibleMoves.some(m => m.from === selectedPoint && m.to === pointIndex);
     
     return (
@@ -127,7 +128,6 @@ export default function BackgammonDashboard() {
         onClick={() => handlePointClick(pointIndex)}
         className={`relative w-full h-full flex flex-col items-center justify-${isBottom ? 'end' : 'start'} px-1 py-4 group cursor-pointer ${isTarget ? "bg-[#c8102e]/10" : ""}`}
       >
-         {/* Triangle Hector Saxe (Pointe effilée) */}
          <div 
             className={`w-0 h-0 border-l-[18px] border-l-transparent border-r-[18px] border-r-transparent transition-all duration-500 group-hover:brightness-125 ${
                 isBottom ? 'border-t-[220px] origin-top' : 'border-b-[220px] rotate-180 origin-bottom'
@@ -156,7 +156,7 @@ export default function BackgammonDashboard() {
               SAXE <span className="text-[#c8102e]">EDITION</span>
             </h1>
             <div className="flex items-center gap-2 text-[9px] text-white/40 font-sans uppercase tracking-[0.4em] mt-1">
-              <span className="w-1.5 h-1.5 bg-[#c8102e] rounded-full animate-pulse"></span> Parisian Luxury Gaming
+              <span className="w-1.5 h-1.5 bg-[#c8102e] rounded-full animate-pulse"></span> Multi-player Online
             </div>
           </div>
         </div>
@@ -202,13 +202,11 @@ export default function BackgammonDashboard() {
           <div className="bg-[#2c2c2c] p-4 rounded-sm shadow-[0_40px_80px_rgba(0,0,0,0.6)] border-[12px] border-[#1a1a1a] relative">
             <div className="grid grid-rows-2 h-[600px] bg-[#121212] shadow-inner relative border border-white/5">
               
-              {/* Moitié Supérieure (Points 12 à 23, de gauche à droite) */}
               <div className="grid grid-cols-12 border-b border-white/10 relative px-2">
                  <div className="absolute left-1/2 top-0 bottom-0 w-12 bg-[#1a1a1a] -translate-x-1/2 z-20 shadow-2xl border-x border-white/5"></div>
                  {Array.from({ length: 12 }).map((_, i) => renderPoint(12 + i, false))}
               </div>
 
-              {/* Moitié Inférieure (Points 11 à 0, de gauche à droite) */}
               <div className="grid grid-cols-12 relative px-2">
                 <div className="absolute left-1/2 top-0 bottom-0 w-12 bg-[#1a1a1a] -translate-x-1/2 z-20 shadow-2xl border-x border-white/5"></div>
                 {Array.from({ length: 12 }).map((_, i) => renderPoint(11 - i, true))}
@@ -241,11 +239,6 @@ export default function BackgammonDashboard() {
                     <span className="text-white font-black tracking-widest uppercase">{turn}</span>
                 </div>
              </div>
-             {selectedPoint !== null && (
-               <div className="text-[#c8102e] text-[10px] font-black animate-pulse">
-                 MOVE SELECTED: POINT {selectedPoint === -1 ? "BAR" : selectedPoint}
-               </div>
-             )}
              <div className="flex gap-4">
                 <button 
                   onClick={resetGame}
