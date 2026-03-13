@@ -2,179 +2,145 @@
 
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { Wallet, Coins, Play, Dice5, ShieldCheck, Activity } from "lucide-react";
+import { Wallet, Trophy, Play, Dice5, ShieldCheck, Activity, User, History } from "lucide-react";
 
 export default function BackgammonDashboard() {
   const [dice, setDice] = useState<number[]>([]);
   const [turn, setTurn] = useState("White");
   const [loading, setLoading] = useState(false);
   const [account, setAccount] = useState<string | null>(null);
-  const [balance, setBalance] = useState<string>("0.00");
   const gameId = "demo-game-1";
 
-  // Connexion Wallet
-  const connectWallet = async () => {
-    if (typeof window !== "undefined" && (window as any).ethereum) {
-      try {
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        setAccount(accounts[0]);
-        const balanceWei = await provider.getBalance(accounts[0]);
-        setBalance(ethers.formatEther(balanceWei).slice(0, 6));
-      } catch (err) {
-        console.error("Erreur connexion wallet", err);
-      }
-    } else {
-      alert("Metamask non détecté !");
-    }
-  };
-
-  const rollDice = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`http://localhost:8000/game/${gameId}/roll`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setDice(data.dice);
-      }
-    } catch (e) {
-      const d1 = Math.floor(Math.random() * 6) + 1;
-      const d2 = Math.floor(Math.random() * 6) + 1;
-      setDice([d1, d2]);
-    }
-    setLoading(false);
+  // Simulation du plateau (Points)
+  // Indices 0-11 (bas), 12-23 (haut)
+  const renderPoint = (index: number, isBottom: boolean) => {
+    const isEven = index % 2 === 0;
+    const color = isEven ? "border-t-[120px] border-t-amber-900/40" : "border-t-[120px] border-t-amber-800/20";
+    const rotate = isBottom ? "" : "rotate-180";
+    
+    return (
+      <div key={index} className={`relative w-full flex flex-col items-center justify-${isBottom ? 'end' : 'start'} px-1`}>
+         <div className={`w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent ${color} ${rotate}`}></div>
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white p-6 font-sans selection:bg-purple-500/30">
-      {/* Navbar / Header */}
-      <header className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-center gap-6 border-b border-purple-500/20 pb-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
-              <Dice5 size={24} className="text-white" />
-            </div>
-            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-              BACKGAMMON <span className="text-purple-500">CRYPTO</span>
-            </h1>
+    <div className="min-h-screen bg-[#0f0e0c] text-amber-50 p-4 lg:p-8 font-serif">
+      {/* Header Luxe */}
+      <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center border-b border-amber-900/30 pb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-amber-700 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(180,83,9,0.3)] border-2 border-amber-500/50">
+            <Trophy size={24} className="text-amber-200" />
           </div>
-          <p className="text-gray-500 mt-1 flex items-center gap-2">
-            <Activity size={14} className="text-green-500" /> MVP Phase 1 • Real-time Betting
-          </p>
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter text-amber-100">
+              GRAND <span className="text-amber-600">GAMMON</span>
+            </h1>
+            <div className="flex items-center gap-2 text-xs text-amber-700 font-sans uppercase tracking-widest">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Table Haute Limite
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {!account ? (
-            <button 
-              onClick={connectWallet}
-              className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/20"
-            >
-              <Wallet size={18} /> CONNECT WALLET
-            </button>
-          ) : (
-            <div className="flex items-center gap-3 bg-gray-900/50 p-1 pr-4 rounded-xl border border-gray-800">
-              <div className="bg-purple-600/20 p-2 rounded-lg text-purple-400 font-mono text-sm">
-                {balance} ETH
-              </div>
-              <span className="text-xs font-mono text-gray-400">
-                {account.slice(0, 6)}...{account.slice(-4)}
-              </span>
-            </div>
-          )}
-        </div>
+        <button 
+          onClick={() => !account && alert("Connexion Wallet...")}
+          className="px-6 py-2 bg-amber-900/40 border border-amber-700/50 rounded-full text-sm font-bold text-amber-200 hover:bg-amber-800/60 transition-all flex items-center gap-2"
+        >
+          <Wallet size={16} /> {account ? "0x...F32" : "REJOINDRE LA TABLE"}
+        </button>
       </header>
 
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Game State */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-[#12121a] p-6 rounded-2xl border border-gray-800/50 shadow-xl">
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-              <Play size={14} className="text-purple-500" /> Session active
-            </h2>
+        
+        {/* Sidebar Gauche - Stats & Enjeux */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="bg-[#1a1814] border border-amber-900/30 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-amber-600 text-xs font-bold uppercase tracking-widest mb-6">Détails du Pari</h3>
             <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-black/30 rounded-xl border border-white/5">
-                <span className="text-gray-400">Tour</span>
-                <span className={`px-3 py-1 rounded-md text-sm font-bold ${turn === "White" ? "bg-white text-black" : "bg-red-500 text-white"}`}>
-                  {turn.toUpperCase()}
-                </span>
+              <div className="flex justify-between items-end border-b border-amber-900/20 pb-2">
+                <span className="text-amber-800 text-sm">POT TOTAL</span>
+                <span className="text-2xl font-bold text-amber-100">100.00 <span className="text-xs text-amber-600">USDT</span></span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-black/30 rounded-xl border border-white/5">
-                <span className="text-gray-400">Enjeu (Bet)</span>
-                <span className="text-cyan-400 font-mono font-bold">50.00 USDT</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-amber-800">Joueur 1</span>
+                <span className="text-amber-200 font-mono">50.00</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-black/30 rounded-xl border border-white/5">
-                <span className="text-gray-400">Plateforme (5%)</span>
-                <span className="text-purple-400 font-mono">2.50 USDT</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-amber-800">Joueur 2</span>
+                <span className="text-amber-200 font-mono">50.00</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-900/10 to-transparent p-6 rounded-2xl border border-purple-500/20">
-            <h3 className="text-purple-300 font-bold mb-2 flex items-center gap-2">
-              <ShieldCheck size={18} /> Sécurité Blockchain
-            </h3>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              Les fonds sont bloqués dans le Smart Contract <span className="text-purple-400 font-mono">BackgammonEscrow</span>.
-              Gains libérés automatiquement après validation.
-            </p>
+          <div className="bg-[#1a1814] border border-amber-900/30 rounded-2xl p-6">
+            <h3 className="text-amber-600 text-xs font-bold uppercase tracking-widest mb-4">Historique</h3>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 text-xs text-amber-900">
+                  <History size={12} /> <span>Joueur 1 a bougé 2 pions vers 18</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Center Column: Gameplay */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          <div className="bg-[#12121a] min-h-[400px] rounded-3xl border border-gray-800 flex flex-col items-center justify-center relative overflow-hidden">
-            {/* Visual background element */}
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent opacity-50 pointer-events-none"></div>
+        {/* Board de Jeu - Le Coeur de l'App */}
+        <div className="lg:col-span-9">
+          <div className="bg-amber-950/20 border-[12px] border-amber-900 rounded-lg shadow-[0_0_60px_rgba(0,0,0,0.5)] p-4 relative">
             
-            <h2 className="text-2xl font-bold mb-10 text-white z-10">Lancer les dés</h2>
-            
-            <div className="flex gap-6 mb-12 z-10">
-              {dice.length > 0 ? (
-                dice.map((d, i) => (
-                  <div key={i} className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center text-[#0a0a0f] text-4xl font-black shadow-[0_10px_30px_rgba(255,255,255,0.2)] transform hover:rotate-12 transition-transform">
+            {/* Plateau de Backgammon */}
+            <div className="grid grid-rows-2 h-[500px] border border-amber-800/30 bg-[#1a1814]">
+              
+              {/* Moitié Supérieure */}
+              <div className="grid grid-cols-12 border-b border-amber-800/30 relative">
+                 {/* Barre Centrale */}
+                 <div className="absolute left-1/2 top-0 bottom-0 w-8 bg-amber-900/50 -translate-x-1/2 z-20 shadow-xl border-x border-amber-800/30 flex flex-col items-center justify-center">
+                    <div className="w-6 h-6 bg-white rounded-full shadow-lg mb-2"></div>
+                 </div>
+                 {Array.from({ length: 12 }).map((_, i) => renderPoint(12 + i, false))}
+              </div>
+
+              {/* Moitié Inférieure */}
+              <div className="grid grid-cols-12 relative">
+                {/* Barre Centrale */}
+                <div className="absolute left-1/2 top-0 bottom-0 w-8 bg-amber-900/50 -translate-x-1/2 z-20 shadow-xl border-x border-amber-800/30"></div>
+                {Array.from({ length: 12 }).map((_, i) => renderPoint(i, true))}
+              </div>
+
+            </div>
+
+            {/* Zone de Contrôle Flottante */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-4">
+              <div className="flex gap-4">
+                {dice.map((d, i) => (
+                  <div key={i} className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center text-amber-950 text-2xl font-bold shadow-2xl border-2 border-amber-200/50 rotate-3">
                     {d}
                   </div>
-                ))
-              ) : (
-                <div className="flex gap-6">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="w-20 h-20 bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-700 flex items-center justify-center text-gray-700">
-                      ?
-                    </div>
-                  ))}
-                </div>
-              )}
+                ))}
+              </div>
+              <button 
+                onClick={() => setDice([Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1])}
+                className="px-8 py-3 bg-amber-700 hover:bg-amber-600 text-amber-50 rounded-full font-bold shadow-2xl border border-amber-500/50 transition-all uppercase tracking-tighter"
+              >
+                Lancer les dés
+              </button>
             </div>
+          </div>
 
-            <button 
-              onClick={rollDice}
-              disabled={loading || !account}
-              className={`z-10 px-12 py-5 rounded-2xl font-black text-lg transition-all shadow-2xl ${
-                loading || !account 
-                  ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700' 
-                  : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white shadow-purple-500/20 scale-105 active:scale-95'
-              }`}
-            >
-              {!account ? "CONNECTEZ VOTRE WALLET" : loading ? "ROLLING..." : "LANCER LES DÉS 🎲"}
-            </button>
-
-            {!account && (
-              <p className="mt-4 text-gray-500 text-sm italic z-10 animate-pulse">
-                Action requise : Connexion Web3 nécessaire pour jouer.
-              </p>
-            )}
+          <div className="mt-6 flex justify-between items-center bg-amber-950/10 p-4 rounded-xl border border-amber-900/20">
+             <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-white rounded-full border-2 border-amber-600"></div>
+                <span className="text-sm font-bold text-amber-100 uppercase tracking-widest">À ton tour</span>
+             </div>
+             <div className="flex gap-2">
+                <div className="px-4 py-2 bg-amber-900/20 rounded-lg text-xs text-amber-500 font-bold uppercase">Doubler</div>
+                <div className="px-4 py-2 bg-amber-900/20 rounded-lg text-xs text-amber-500 font-bold uppercase">Passer</div>
+             </div>
           </div>
         </div>
-      </main>
 
-      <footer className="max-w-7xl mx-auto mt-20 pt-8 border-t border-gray-800/50 flex justify-between items-center text-gray-600 text-xs">
-        <div>© 2026 BACKGAMMON CRYPTO LABS</div>
-        <div className="flex gap-4">
-          <span className="hover:text-purple-400 cursor-pointer">TERMS</span>
-          <span className="hover:text-purple-400 cursor-pointer">DOCS</span>
-          <span className="hover:text-purple-400 cursor-pointer">GITHUB</span>
-        </div>
-      </footer>
+      </main>
     </div>
   );
 }
