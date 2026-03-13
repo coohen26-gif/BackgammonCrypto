@@ -6,8 +6,8 @@ import { Wallet, Trophy, Play, Dice5, ShieldCheck, Activity, History, ChevronRig
 import { io } from "socket.io-client";
 import { ESCROW_ABI, USDT_ABI } from "./constants";
 
-const ESCROW_ADDRESS = "0x71C765660998d8976E84976722889244E4aD8976"; // Placeholder
-const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // Mainnet USDT
+const ESCROW_ADDRESS = "0x71C765660998d8976E84976722889244E4aD8976";
+const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
 export default function BackgammonDashboard() {
   const [dice, setDice] = useState<number[]>([]);
@@ -55,6 +55,16 @@ export default function BackgammonDashboard() {
     setLoading(true);
     try {
       await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/roll`, { method: "POST" });
+    } catch (e) {}
+    setLoading(false);
+  };
+
+  const resetGame = async () => {
+    if (!confirm("Voulez-vous vraiment réinitialiser la partie ?")) return;
+    setLoading(true);
+    try {
+      await fetch(`https://mydavid.io/backgammon/api/game/${gameId}/reset`, { method: "POST" });
+      setSelectedPoint(null);
     } catch (e) {}
     setLoading(false);
   };
@@ -117,7 +127,7 @@ export default function BackgammonDashboard() {
     return Array.from({ length: absCount }).map((_, i) => (
       <div 
         key={i} 
-        className={`w-5 h-5 md:w-8 md:h-8 rounded-full border-2 -mt-3 md:-mt-4 first:mt-0 relative transition-all duration-300 shadow-lg checker-animate ${
+        className={`w-6 h-6 md:w-10 md:h-10 rounded-full border-2 -mt-4 md:-mt-6 first:mt-0 relative transition-all duration-300 shadow-lg checker-animate ${
           isWhite ? "bg-gradient-to-br from-[#fefefe] to-[#e0e0e0] border-white/40 shadow-white/10" : "bg-gradient-to-br from-[#333333] to-[#111111] border-black/40 shadow-black/40"
         } ${isSelected ? "ring-4 ring-[#c8102e] scale-110 z-30" : ""} ${canMove && !selectedPoint ? "cursor-pointer hover:shadow-[0_0_15px_rgba(200,16,46,0.4)]" : ""}`}
         style={{ animationDelay: `${i * 0.05}s` }}
@@ -133,7 +143,7 @@ export default function BackgammonDashboard() {
     const isTarget = selectedPoint !== null && possibleMoves.some(m => m.from === selectedPoint && m.to === pointIndex);
     return (
       <div key={pointIndex} onClick={() => handlePointClick(pointIndex)} className={`relative w-full h-full flex flex-col items-center justify-${isBottom ? 'end' : 'start'} group cursor-pointer ${isTarget ? "bg-[#c8102e]/10" : ""}`}>
-         <div className={`w-0 h-0 border-l-[12px] md:border-l-[18px] border-l-transparent border-r-[12px] md:border-r-[18px] border-r-transparent transition-all duration-500 group-hover:brightness-125 ${isBottom ? 'border-t-[120px] md:border-t-[220px] origin-top' : 'border-b-[120px] md:border-b-[220px] rotate-180 origin-bottom'} ${isTarget ? 'border-t-[#c8102e]' : isDarkPoint ? 'border-t-[#c8102e]/70' : 'border-t-[#333]/70'}`}></div>
+         <div className={`w-0 h-0 border-l-[12px] md:border-l-[24px] border-l-transparent border-r-[12px] md:border-r-[24px] border-r-transparent transition-all duration-500 group-hover:brightness-125 ${isBottom ? 'border-t-[140px] md:border-t-[280px] origin-top' : 'border-b-[140px] md:border-b-[280px] rotate-180 origin-bottom'} ${isTarget ? 'border-t-[#c8102e]' : isDarkPoint ? 'border-t-[#c8102e]/80' : 'border-t-[#333]/80'}`}></div>
          <div className={`z-10 flex flex-col items-center absolute ${isBottom ? 'bottom-2' : 'top-2'}`}>{renderCheckers(checkers, pointIndex)}</div>
       </div>
     );
@@ -144,86 +154,84 @@ export default function BackgammonDashboard() {
       <header className="max-w-7xl mx-auto mb-4 md:mb-10 flex justify-between items-center border-b border-white/10 pb-4 md:pb-8">
         <div className="flex items-center gap-3 md:gap-6">
           <div className="w-10 h-10 md:w-14 md:h-14 bg-[#c8102e] rounded-sm flex items-center justify-center shadow-2xl rotate-45 border-2 border-white/20">
-            <Trophy size={20} className="text-white -rotate-45 md:hidden" /><Trophy size={28} className="text-white -rotate-45 hidden md:block" />
+            <Trophy size={20} className="text-white -rotate-45" />
           </div>
-          <h1 className="text-xl md:text-4xl font-black tracking-tighter text-white uppercase italic">SAXE <span className="text-[#c8102e]">EDITION</span></h1>
+          <h1 className="text-xl md:text-4xl font-black tracking-tighter text-white uppercase italic tracking-widest">SAXE <span className="text-[#c8102e]">EDITION</span></h1>
         </div>
         <button onClick={() => !account && setAccount("0x611...F32")} className="px-4 py-2 md:px-8 md:py-3 bg-[#c8102e] border border-white/10 rounded-sm text-[8px] md:text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl">
           {account ? "CONNECTED" : "WALLET"}
         </button>
       </header>
 
-      <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-10">
-        <div className="lg:hidden grid grid-cols-2 gap-2 mb-2">
-            <div className="bg-[#1e1e1e] p-3 border border-white/5 text-center">
-                <p className="text-[8px] text-white/20 uppercase font-black">Pot Total</p>
-                <p className="text-lg font-black">100.00 <span className="text-[8px] text-[#c8102e]">USDT</span></p>
+      <main className="max-w-7xl mx-auto flex flex-col gap-4 md:gap-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-[#1e1e1e] p-4 md:p-6 border border-white/5 text-center">
+                <p className="text-[8px] md:text-[10px] text-white/20 uppercase font-black tracking-widest mb-1">Pot Total</p>
+                <p className="text-lg md:text-2xl font-black">100.00 <span className="text-[8px] text-[#c8102e]">USDT</span></p>
             </div>
-            <div className="bg-[#1e1e1e] p-3 border border-white/5 text-center">
-                <p className="text-[8px] text-white/20 uppercase font-black">Your Turn</p>
-                <p className={`text-lg font-black uppercase ${turn === "White" ? "text-white" : "text-[#c8102e]"}`}>{turn}</p>
+            <div className="bg-[#1e1e1e] p-4 md:p-6 border border-white/5 text-center">
+                <p className="text-[8px] md:text-[10px] text-white/20 uppercase font-black tracking-widest mb-1">Your Turn</p>
+                <p className={`text-lg md:text-2xl font-black uppercase ${turn === "White" ? "text-white" : "text-[#c8102e]"}`}>{turn}</p>
+            </div>
+            <div className="hidden lg:block bg-[#1e1e1e] p-6 border border-white/5 text-center cursor-pointer" onClick={() => handlePointClick(-1)}>
+                <p className="text-[10px] text-white/20 uppercase font-black tracking-widest mb-2 text-[#c8102e]">The Bar</p>
+                <div className="flex justify-center gap-4">{renderCheckers(bar.W, -1)}{renderCheckers(-bar.B, -1)}</div>
+            </div>
+            <div className="hidden lg:flex items-center justify-center bg-[#1e1e1e] p-6 border border-white/5">
+                {bettingStatus !== "secured" ? (
+                    <button onClick={handleStake} disabled={bettingStatus !== "idle"} className="w-full py-2 bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-[#c8102e] hover:text-white transition-all">STAKE 50 USDT</button>
+                ) : (
+                    <div className="text-green-500 text-[10px] font-black uppercase flex items-center gap-2"><ShieldCheck size={14} /> SECURED</div>
+                )}
             </div>
         </div>
 
-        <div className="hidden lg:block lg:col-span-3 space-y-6">
-          <div className="bg-[#1e1e1e] border border-white/5 rounded-sm p-8 shadow-2xl">
-            <h3 className="text-[#c8102e] text-[9px] font-bold uppercase tracking-[0.3em] mb-8">Betting Stakes</h3>
-            <div className="space-y-6">
-              <div>
-                <span className="text-white/20 text-[9px] uppercase block mb-1">Total Pool</span>
-                <span className="text-3xl font-black text-white tracking-tighter">100.00 <span className="text-xs text-[#c8102e]">USDT</span></span>
-              </div>
-              {bettingStatus !== "secured" ? (
-                <button onClick={handleStake} disabled={bettingStatus !== "idle"} className="w-full py-3 bg-white text-black text-[9px] font-black uppercase tracking-widest hover:bg-[#c8102e] hover:text-white transition-all flex items-center justify-center gap-2">
-                  {bettingStatus === "idle" ? "STAKE 50 USDT" : <><Loader2 size={12} className="animate-spin" /> {bettingStatus.toUpperCase()}...</>}
-                </button>
-              ) : (
-                <div className="py-3 bg-green-500/10 border border-green-500/30 text-green-500 text-[9px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                  <ShieldCheck size={12} /> FUNDS SECURED
-                </div>
-              )}
-              {error && <div className="p-2 bg-red-500/10 border border-red-500/30 text-red-500 text-[7px] font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {error}</div>}
-            </div>
-          </div>
-          
-          <div className="bg-[#1e1e1e] border border-white/5 rounded-sm p-8 text-center cursor-pointer" onClick={() => handlePointClick(-1)}>
-            <h3 className="text-[#c8102e] text-[9px] font-bold uppercase tracking-[0.3em] mb-6">The Bar</h3>
-            <div className="flex justify-around items-center p-4 bg-black/40 rounded-sm border border-white/5">
-              <div><div className={`text-[9px] mb-3 uppercase ${selectedPoint === -1 ? "text-[#c8102e] font-bold" : "text-white/20"}`}>Ivory</div><div className="flex justify-center h-10">{renderCheckers(bar.W, -1)}</div></div>
-              <div className="w-px h-10 bg-white/5"></div>
-              <div><div className={`text-[9px] mb-3 uppercase ${selectedPoint === -1 ? "text-[#c8102e] font-bold" : "text-white/20"}`}>Carbon</div><div className="flex justify-center h-10">{renderCheckers(-bar.B, -1)}</div></div>
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-9">
-          <div className="bg-[#2c2c2c] p-2 md:p-4 rounded-sm shadow-[0_40px_80px_rgba(0,0,0,0.6)] border-[6px] md:border-[12px] border-[#1a1a1a] relative">
-            <div className="grid grid-rows-2 h-[450px] md:h-[600px] bg-[#121212] shadow-inner relative border border-white/5">
-              <div className="grid grid-cols-13 border-b border-white/10 relative px-1 md:px-2 h-full">
-                 <div className="col-start-7 w-full bg-[#1a1a1a] shadow-2xl border-x border-white/5 z-20"></div>
+        <div className="bg-[#2c2c2c] p-2 md:p-6 rounded-sm shadow-[0_40px_80px_rgba(0,0,0,0.8)] border-[8px] md:border-[20px] border-[#1a1a1a] relative">
+            <div className="grid grid-rows-2 h-[500px] md:h-[800px] bg-[#121212] shadow-inner relative border border-white/5">
+              <div className="grid grid-cols-13 border-b border-white/10 relative px-1 md:px-4 h-full">
+                 <div className="col-start-7 w-full bg-[#1a1a1a] shadow-[0_0_50px_rgba(0,0,0,1)] border-x border-white/5 z-20"></div>
                  <div className="col-span-6 grid grid-cols-6 h-full">{[12, 13, 14, 15, 16, 17].map((idx) => renderPoint(idx, false))}</div>
                  <div className="col-span-6 grid grid-cols-6 h-full">{[18, 19, 20, 21, 22, 23].map((idx) => renderPoint(idx, false))}</div>
               </div>
-              <div className="grid grid-cols-13 relative px-1 md:px-2 h-full">
-                <div className="col-start-7 w-full bg-[#1a1a1a] shadow-2xl border-x border-white/5 z-20"></div>
+              <div className="grid grid-cols-13 relative px-1 md:px-4 h-full">
+                <div className="col-start-7 w-full bg-[#1a1a1a] shadow-[0_0_50px_rgba(0,0,0,1)] border-x border-white/5 z-20"></div>
                  <div className="col-span-6 grid grid-cols-6 h-full">{[11, 10, 9, 8, 7, 6].map((idx) => renderPoint(idx, true))}</div>
                  <div className="col-span-6 grid grid-cols-6 h-full">{[5, 4, 3, 2, 1, 0].map((idx) => renderPoint(idx, true))}</div>
               </div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-4 md:gap-6 w-full">
-                <div className="flex gap-2 md:gap-4">{dice.map((d, i) => (<div key={i} className="w-10 h-10 md:w-14 md:h-14 bg-white rounded-sm flex items-center justify-center text-black text-xl md:text-3xl font-black shadow-2xl">{d}</div>))}</div>
-                <button onClick={rollDice} disabled={loading || (dice.length > 0 && possibleMoves.length > 0)} className={`px-6 py-2 md:px-10 md:py-3 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] transition-all ${(dice.length > 0 && possibleMoves.length > 0) ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-[#c8102e] text-white hover:bg-white hover:text-black"}`}>{loading ? "..." : "Roll"}</button>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-6 md:gap-10">
+                <div className="flex gap-4 md:gap-8">
+                  {dice.map((d, i) => (
+                    <div key={i} className="w-12 h-12 md:w-20 md:h-20 bg-white flex items-center justify-center text-black text-2xl md:text-5xl font-black shadow-[0_20px_60px_rgba(0,0,0,1)] border-b-4 border-gray-300">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  onClick={rollDice}
+                  disabled={loading || (dice.length > 0 && possibleMoves.length > 0)}
+                  className={`px-8 py-3 md:px-14 md:py-5 text-[10px] md:text-[14px] font-black uppercase tracking-[0.4em] transition-all shadow-2xl ${(dice.length > 0 && possibleMoves.length > 0) ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-[#c8102e] text-white hover:bg-white hover:text-black border-2 border-white/20"}`}
+                >
+                  {loading ? "..." : "Roll Dice"}
+                </button>
               </div>
             </div>
-          </div>
-          <div className="mt-4 md:mt-8 flex justify-between items-center bg-[#1e1e1e] p-4 md:p-6 rounded-sm border border-white/5 shadow-xl">
-             <div className="flex items-center gap-4 md:gap-6">
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-all ${turn === "White" ? "bg-white border-[#c8102e]" : "bg-[#333] border-white/10"}`}></div>
-                <div><span className="text-[8px] md:text-[9px] text-white/20 uppercase tracking-[0.5em] block mb-1">Turn</span><span className="text-white font-black tracking-widest uppercase text-xs md:text-base">{turn} PLAYER</span></div>
+        </div>
+
+        <div className="flex justify-between items-center bg-[#1e1e1e] p-6 rounded-sm border border-white/5">
+             <div className="flex items-center gap-6">
+                <div className={`w-10 h-10 rounded-full border-4 transition-all ${turn === "White" ? "bg-white border-[#c8102e]" : "bg-[#333] border-white/10"}`}></div>
+                <span className="text-white font-black tracking-widest uppercase text-sm md:text-xl">{turn} PLAYER</span>
              </div>
-             <div className="flex gap-2 md:gap-4"><button onClick={() => window.location.reload()} className="px-4 py-2 bg-white/5 rounded-sm text-[8px] md:text-[9px] font-bold text-white/40 border border-white/5 uppercase tracking-widest">Reload</button></div>
-          </div>
+             <div className="flex gap-4">
+                <button onClick={() => handlePointClick(-1)} className="lg:hidden px-4 py-2 bg-[#c8102e]/20 text-[#c8102e] text-[10px] font-black border border-[#c8102e]/30 uppercase">Bar Access</button>
+                <button onClick={resetGame} className="px-6 py-2 bg-white/5 text-white/40 text-[10px] font-black border border-white/5 uppercase tracking-widest hover:text-white">Reset Table</button>
+             </div>
         </div>
       </main>
+
+      <footer className="max-w-7xl mx-auto mt-20 pb-10 text-center text-[8px] text-white/10 tracking-[0.6em] font-black uppercase">
+        Handcrafted for Cohen • Hector Saxe Digital 2026
+      </footer>
     </div>
   );
 }

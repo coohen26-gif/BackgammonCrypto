@@ -21,5 +21,9 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@types/socket.io": "^3.0.2",
+    "socket.io": "^4.8.3"
   }
 }
