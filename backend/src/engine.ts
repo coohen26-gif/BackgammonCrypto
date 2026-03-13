@@ -17,6 +17,8 @@ export class BackgammonEngine {
 
     private initializeBoard(): GameState {
         const board = new Array(24).fill(0);
+        // Blanc (W) : se déplace de 0 vers 23
+        // Noir (B) : se déplace de 23 vers 0
         board[0] = 2; board[11] = 5; board[16] = 3; board[18] = 5; // White
         board[23] = -2; board[12] = -5; board[7] = -3; board[5] = -5; // Black
         return { board, bar: { W: 0, B: 0 }, off: { W: 0, B: 0 }, turn: 'W', dice: [] };
@@ -44,7 +46,7 @@ export class BackgammonEngine {
     public getPossibleMoves(): { from: number; to: number }[] {
         const moves: { from: number; to: number }[] = [];
         const player = this.state.turn;
-        const dice = [...new Set(this.state.dice)]; // Uniques dés
+        const dice = [...new Set(this.state.dice)];
 
         if (dice.length === 0) return [];
 
@@ -73,8 +75,22 @@ export class BackgammonEngine {
                     // Bearing off
                     if ((player === 'W' && to >= 24) || (player === 'B' && to <= -1)) {
                         if (this.canPlayerBearOff(player)) {
-                            // Règle simplifiée : sortie exacte ou supérieure si aucun pion derrière
-                            moves.push({ from: i, to: player === 'W' ? 24 : -1 });
+                            // Règle backgammon : sortie exacte ou plus si aucun pion plus loin
+                            const isExact = (player === 'W' && to === 24) || (player === 'B' && to === -1);
+                            let canExit = isExact;
+                            if (!isExact) {
+                                // Vérifier si c'est le pion le plus éloigné
+                                if (player === 'W') {
+                                    let hasFurther = false;
+                                    for (let j = 18; j < i; j++) if (this.state.board[j] > 0) hasFurther = true;
+                                    if (!hasFurther) canExit = true;
+                                } else {
+                                    let hasFurther = false;
+                                    for (let j = 5; j > i; j--) if (this.state.board[j] < 0) hasFurther = true;
+                                    if (!hasFurther) canExit = true;
+                                }
+                            }
+                            if (canExit) moves.push({ from: i, to: player === 'W' ? 24 : -1 });
                         }
                         continue;
                     }
@@ -95,7 +111,16 @@ export class BackgammonEngine {
             ? (player === 'W' ? to + 1 : 24 - to) 
             : Math.abs(to - from);
 
-        const diceIndex = this.state.dice.indexOf(distance);
+        // Trouver le dé à utiliser (gestion intelligente des sorties de plateau)
+        let diceIndex = this.state.dice.indexOf(distance);
+        if (diceIndex === -1 && (to === 24 || to === -1)) {
+            // Sortie non-exacte autorisée si aucun pion plus loin
+            for (let d = distance + 1; d <= 6; d++) {
+                diceIndex = this.state.dice.indexOf(d);
+                if (diceIndex !== -1) break;
+            }
+        }
+
         if (diceIndex === -1) return false;
 
         // Exécution
@@ -111,18 +136,21 @@ export class BackgammonEngine {
             else this.state.off.B++;
         } else {
             const target = this.state.board[to];
-            if (player === 'W' && target === -1) {
+            if ((player === 'W' && target === -1) || (player === 'B' && target === 1)) {
                 this.state.board[to] = 0;
-                this.state.bar.B++;
-            } else if (player === 'B' && target === 1) {
-                this.state.board[to] = 0;
-                this.state.bar.W++;
+                this.state.bar[player === 'W' ? 'B' : 'W']++;
             }
             this.state.board[to] += (player === 'W' ? 1 : -1);
         }
 
         this.state.dice.splice(diceIndex, 1);
-        if (this.state.dice.length === 0) this.state.turn = this.state.turn === 'W' ? 'B' : 'W';
+        
+        // Changement de tour s'il n'y a plus de mouvements possibles ou plus de dés
+        if (this.state.dice.length === 0 || this.getPossibleMoves().length === 0) {
+            this.state.turn = this.state.turn === 'W' ? 'B' : 'W';
+            this.state.dice = []; // On nettoie les dés restants si aucun move possible
+        }
+        
         return true;
     }
 
